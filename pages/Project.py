@@ -1,4 +1,3 @@
-# youtube_clean_studio.py
 import os
 import re
 from datetime import datetime, timedelta, timezone
@@ -10,6 +9,11 @@ from wordcloud import WordCloud
 import plotly.express as px
 from googleapiclient.discovery import build
 
+# ----------------- Authentication Check -----------------
+if "authenticated" not in st.session_state or not st.session_state["authenticated"]:
+    st.warning("⚠️ You must login first to access this page!")
+    st.stop()
+
 # ---------------------------
 # CONFIG
 # ---------------------------
@@ -19,6 +23,7 @@ YT_API_KEY = os.environ.get("YT_API_KEY", "AIzaSyBr6ssKJCQi4ORaU9bIgGAb3cOaoo2ps
 
 if not YT_API_KEY:
     st.warning("YT_API_KEY not set.")
+
 try:
     youtube = build("youtube", "v3", developerKey=YT_API_KEY) if YT_API_KEY else None
 except Exception as e:
@@ -34,11 +39,7 @@ def parse_duration(duration_str: str) -> int:
     m = _duration_re.match(duration_str or "")
     if not m:
         return 0
-    return (
-        int(m.group(1) or 0) * 3600
-        + int(m.group(2) or 0) * 60
-        + int(m.group(3) or 0)
-    )
+    return int(m.group(1) or 0) * 3600 + int(m.group(2) or 0) * 60 + int(m.group(3) or 0)
 
 def get_channel_stats(channel_id: str) -> Dict[str, Any]:
     if not youtube:
@@ -57,12 +58,10 @@ def get_channel_stats(channel_id: str) -> Dict[str, Any]:
             "subscribers": int(d.get("statistics", {}).get("subscriberCount", 0)),
             "views": int(d.get("statistics", {}).get("viewCount", 0)),
             "total_videos": int(d.get("statistics", {}).get("videoCount", 0)),
-            "uploads_playlist": d.get("contentDetails", {})
-            .get("relatedPlaylists", {})
-            .get("uploads"),
+            "uploads_playlist": d.get("contentDetails", {}).get("relatedPlaylists", {}).get("uploads"),
         }
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error fetching channel {channel_id}: {e}")
         return {}
 
 def get_video_ids(playlist_id: str, max_results=300):
@@ -96,18 +95,16 @@ def get_video_details(video_ids: List[str]):
             snip = v["snippet"]
             stats = v.get("statistics", {})
             cd = v.get("contentDetails", {})
-            rows.append(
-                {
-                    "video_id": v["id"],
-                    "title": snip["title"],
-                    "views": int(stats.get("viewCount", 0)),
-                    "likes": int(stats.get("likeCount", 0)),
-                    "comments": int(stats.get("commentCount", 0)),
-                    "publishedAt": pd.to_datetime(snip["publishedAt"]),
-                    "thumbnail": snip.get("thumbnails", {}).get("medium", {}).get("url"),
-                    "duration_s": parse_duration(cd.get("duration", "")),
-                }
-            )
+            rows.append({
+                "video_id": v["id"],
+                "title": snip["title"],
+                "views": int(stats.get("viewCount", 0)),
+                "likes": int(stats.get("likeCount", 0)),
+                "comments": int(stats.get("commentCount", 0)),
+                "publishedAt": pd.to_datetime(snip["publishedAt"]),
+                "thumbnail": snip.get("thumbnails", {}).get("medium", {}).get("url"),
+                "duration_s": parse_duration(cd.get("duration", "")),
+            })
     df = pd.DataFrame(rows)
     if not df.empty:
         df["minutes"] = df["duration_s"] / 60
@@ -118,10 +115,19 @@ def get_video_details(video_ids: List[str]):
 # UI
 # ---------------------------
 st.title("YouTube Analytics Studio")
-st.markdown("Best analytics dashboard")
+st.markdown(f"Welcome, {st.session_state['user']}!")
 
 with st.sidebar:
-    st.header("Inputs")
+    st.header("Controls")
+
+    # ----------------- Logout -----------------
+    if st.button("Logout"):
+        st.session_state["authenticated"] = False
+        st.session_state["user"] = None
+        st.success("✅ Logged out successfully!")
+        st.experimental_rerun()
+
+    st.subheader("Channel Inputs")
     channel_ids_raw = st.text_area(
         "Channel IDs (one per line)", value="UCk8GzjMOrta8yxDcKfylJYw"
     )
@@ -172,7 +178,6 @@ videos_df = videos_df[
 # Metrics
 # ---------------------------
 left, right = st.columns([3, 1])
-
 total_views = int(videos_df["views"].sum())
 total_videos = len(videos_df)
 avg_eng = float(videos_df["engagement_rate"].mean(skipna=True) or 0)
@@ -185,26 +190,14 @@ left.metric("Avg Engagement", f"{avg_eng:.2%}")
 # Comparison
 # ---------------------------
 st.subheader("Channel Comparison (No AI)")
-
 if len(channels) >= 2:
     c1, c2 = channels[0], channels[1]
     st.write(f"### {c1['channel_name']} vs {c2['channel_name']}")
-
-    comp_df = pd.DataFrame(
-        {
-            "Metric": ["Subscribers", "Total Views", "Videos"],
-            c1["channel_name"]: [
-                c1["subscribers"],
-                c1["views"],
-                c1["total_videos"],
-            ],
-            c2["channel_name"]: [
-                c2["subscribers"],
-                c2["views"],
-                c2["total_videos"],
-            ],
-        }
-    )
+    comp_df = pd.DataFrame({
+        "Metric": ["Subscribers", "Total Views", "Videos"],
+        c1["channel_name"]: [c1["subscribers"], c1["views"], c1["total_videos"]],
+        c2["channel_name"]: [c2["subscribers"], c2["views"], c2["total_videos"]],
+    })
     st.dataframe(comp_df)
 else:
     st.info("Enter 2 channel IDs for comparison.")
@@ -213,9 +206,7 @@ else:
 # Charts
 # ---------------------------
 st.subheader("Views by Day")
-daily = videos_df.assign(date=videos_df["publishedAt"].dt.date).groupby("date")[
-    "views"
-].sum()
+daily = videos_df.assign(date=videos_df["publishedAt"].dt.date).groupby("date")["views"].sum()
 fig = px.line(daily, title="Views by Date")
 st.plotly_chart(fig, use_container_width=True)
 
@@ -224,8 +215,7 @@ top = videos_df.sort_values("views", ascending=False).head(20)
 for _, r in top.iterrows():
     with st.expander(r["title"][:70]):
         st.write(f"Views: {r['views']:,}")
-        st.write(f"Engagement: {
-    r['engagement_rate']:.2%}")
+        st.write(f"Engagement: {r['engagement_rate']:.2%}")
         if r["thumbnail"]:
             st.image(r["thumbnail"], width=240)
 
@@ -233,6 +223,6 @@ st.subheader("Word Cloud")
 text = " ".join(videos_df["title"].tolist())
 wc = WordCloud(width=900, height=300, background_color="white").generate(text)
 fig_wc, ax = plt.subplots(figsize=(12, 3))
-ax.imshow(wc)
+ax.imshow(wc, interpolation='bilinear')
 ax.axis("off")
 st.pyplot(fig_wc)
