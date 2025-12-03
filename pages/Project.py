@@ -125,7 +125,7 @@ with st.sidebar:
         st.session_state["authenticated"] = False
         st.session_state["user"] = None
         st.success("✅ Logged out successfully!")
-        st.experimental_rerun()
+        st.rerun()
 
     st.subheader("Channel Inputs")
     channel_ids_raw = st.text_area(
