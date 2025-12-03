@@ -2,7 +2,7 @@ from pymongo import MongoClient
 import bcrypt
 
 # ----------------- MONGODB CONNECTION -----------------
-MONGO_URI = "mongodb+srv://NovaAI:Abcd1234@cluster0.at3duas.mongodb.net/Youtube?retryWrites=true&w=majority&appName=Cluster0"  # Replace with your Atlas URI
+MONGO_URI = st.secrets["MONGO_URI"]
 client = MongoClient(MONGO_URI)
 db = client["youtube_dashboard"]
 users_collection = db["users"]
