@@ -12,7 +12,7 @@ if "user" not in st.session_state:
 # ----------------- Redirect if already logged in -----------------
 if st.session_state["authenticated"]:
     st.experimental_set_query_params()  # clear query params
-    st.experimental_rerun()  # refresh page to redirect
+    st.rerun()  # refresh page to redirect
     st.stop()
 
 st.title("🔑 Welcome to YouTube Analytics Dashboard")
