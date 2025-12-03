@@ -7,7 +7,6 @@ client = MongoClient(MONGO_URI)
 db = client["youtube_dashboard"]
 users_collection = db["users"]
 
-
 # ----------------- SIGNUP -----------------
 def signup(email, password):
     if users_collection.find_one({"email": email}):
@@ -16,7 +15,6 @@ def signup(email, password):
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     users_collection.insert_one({"email": email, "password": hashed_pw})
     return True, "✅ Signup successful! Please login."
-
 
 # ----------------- LOGIN -----------------
 def login(email, password):
