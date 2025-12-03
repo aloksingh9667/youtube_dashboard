@@ -19,7 +19,7 @@ if "authenticated" not in st.session_state or not st.session_state["authenticate
 # ---------------------------
 st.set_page_config(page_title="YouTube Studio (Clean Version)", layout="wide")
 
-YT_API_KEY = os.environ.get("YT_API_KEY", "AIzaSyBr6ssKJCQi4ORaU9bIgGAb3cOaoo2psiI")
+YT_API_KEY = st.secrets["YT_API_KEY"]
 
 if not YT_API_KEY:
     st.warning("YT_API_KEY not set.")
