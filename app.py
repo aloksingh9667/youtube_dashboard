@@ -29,7 +29,7 @@ with tab1:
             st.session_state["authenticated"] = True
             st.session_state["user"] = email
             st.success(msg)
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error(msg)
 
