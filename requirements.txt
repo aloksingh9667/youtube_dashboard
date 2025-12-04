@@ -6,3 +6,4 @@ plotly
 google-api-python-client
 pymongo
 bcrypt
+reportlab
