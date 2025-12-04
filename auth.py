@@ -1,8 +1,13 @@
+import streamlit as st
 from pymongo import MongoClient
 import bcrypt
 
-# ----------------- MONGODB CONNECTION -----------------
-MONGO_URI = st.secrets["MONGO_URI"]
+# --- Safe load ---
+MONGO_URI = st.secrets.get("MONGO_URI", None)
+if MONGO_URI is None:
+    st.error("❌ MONGO_URI not found in secrets.toml")
+    st.stop()
+
 client = MongoClient(MONGO_URI)
 db = client["youtube_dashboard"]
 users_collection = db["users"]
@@ -11,7 +16,6 @@ users_collection = db["users"]
 def signup(email, password):
     if users_collection.find_one({"email": email}):
         return False, "⚠️ Email already registered!"
-
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     users_collection.insert_one({"email": email, "password": hashed_pw})
     return True, "✅ Signup successful! Please login."
@@ -21,7 +25,6 @@ def login(email, password):
     user = users_collection.find_one({"email": email})
     if not user:
         return False, "⚠️ User not found!"
-
     if bcrypt.checkpw(password.encode('utf-8'), user["password"]):
         return True, "✅ Login successful!"
     else:
