@@ -7,15 +7,13 @@ st.set_page_config(page_title="Login | Signup", layout="centered")
 # ----------------- Initialize session -----------------
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
+
 if "user" not in st.session_state:
     st.session_state["user"] = None
 
 
 # ----------------- Email Validation -----------------
 def is_valid_email(email: str) -> (bool, str):
-    """Allow only specific email domains."""
-
-    # Basic email format check
     pattern = r"^[\w\.-]+@[\w\.-]+\.\w+$"
     if not re.match(pattern, email):
         return False, "Invalid email format."
@@ -38,7 +36,6 @@ def is_valid_email(email: str) -> (bool, str):
 
 # ----------------- Password Validation -----------------
 def is_strong_password(password: str) -> (bool, str):
-    """Check password strength."""
     if len(password) < 8:
         return False, "Password must be at least 8 characters long."
     if not re.search(r"[A-Z]", password):
@@ -52,12 +49,13 @@ def is_strong_password(password: str) -> (bool, str):
     return True, ""
 
 
-# ----------------- Redirect if logged in -----------------
+# ----------------- Redirect if already logged in -----------------
 if st.session_state["authenticated"]:
-    st.query_params.clear()
-    st.rerun()
+    st.switch_page("pages/Project.py")   # 🚀 Auto redirect
     st.stop()
 
+
+# ----------------- UI -----------------
 st.title("🔑 Welcome to YouTube Analytics Dashboard")
 
 tab1, tab2 = st.tabs(["Login", "Signup"])
@@ -70,7 +68,6 @@ with tab1:
     password = st.text_input("Password", type="password", key="login_password")
 
     if st.button("Login"):
-        # Empty fields
         if not email or not password:
             st.error("Please fill in all fields.")
         else:
@@ -80,10 +77,13 @@ with tab1:
             else:
                 success, msg = login(email, password)
                 if success:
+                    st.success(msg)
                     st.session_state["authenticated"] = True
                     st.session_state["user"] = email
-                    st.success(msg)
-                    st.rerun()
+
+                    # 🚀 Redirect to dashboard
+                    st.switch_page("pages/Project.py")
+
                 else:
                     st.error(msg)
 
@@ -95,7 +95,6 @@ with tab2:
     new_password = st.text_input("Password", type="password", key="signup_password")
 
     if st.button("Signup"):
-        # Empty fields
         if not new_email or not new_password:
             st.error("Please fill in all fields.")
         else:
